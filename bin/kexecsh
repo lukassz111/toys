@@ -1,0 +1,8 @@
+#!/bin/bash
+
+POD_NAME=$(kubectl get pod | fzf -q "$@" --select-1 --exit-0 | awk '{print $1}' | head -n 1)
+CONTAINER_NAMES=$(kubectl get pod "$POD_NAME" -o jsonpath='{.spec.containers[*].name}')
+echo "Selected Pod: $POD_NAME"
+CONTAINER_SELECT=$(echo "$CONTAINER_NAMES" | tr ' ' '\n' | fzf --select-1 --exit-0)
+echo "Selected Container: $CONTAINER_SELECT"
+kubectl exec -it "$POD_NAME" -c "$CONTAINER_SELECT" -- sh
