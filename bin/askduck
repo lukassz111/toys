@@ -1,0 +1,125 @@
+#!/usr/bin/env node
+// import { marked } from "marked";
+// import { TerminalRenderer } from "marked-terminal";
+// marked.use(new TerminalRenderer());
+
+// const text_duck = process.argv.slice().join(" ");
+
+// if (!text) {
+//   console.error("Użycie: cheat <zapytanie>");
+//   process.exit(1);
+// }
+
+async function fetchDuckDuckGoData(query) {
+  const response = await fetch(`https://duckduckgo.com/${encodeURIComponent(query)}&format=json&no_html=1`, {
+    method: "GET",
+    headers: { "Content-Type": "text/markdown", "User-Agent": "curl" },
+  });
+  if (!response.ok) {
+    throw new Error(`Status ${response.status}`);
+  }
+  return await response.json();
+}
+
+async function queryOllama(prompt) {
+  const ollamaUrl = "http://localhost:11434/api/chat";
+  const ollamaModel = "gemma4:e2b"; // zmień na model, który masz zainstalowany
+  const response = await fetch(ollamaUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: ollamaModel,
+      messages: [
+        { "role": "user", "content": prompt }
+      ],
+      stream: false,
+      temperature: 0.7,
+      // Tools 
+      tools: [
+        {
+          type: "function",
+          function: {
+            "name": "fetch_duck_duck_go",
+            "description": "Fetch data from DuckDuckGo for a given query by api. Returns the result in JSON format.",
+            "parameters": {
+              "type": "object",
+              "required": ["query"],
+              "properties": {
+                "query": {"type": "string", "description": "The search query for DuckDuckGo"}
+              }
+            }
+          }
+        }
+      ]
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Status ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+// const url = `https://duckduckgo.com/${encodeURIComponent(text)}&format=json&no_html=1`;
+
+async function main() {
+  const query = process.argv.slice(2).join(" ");
+  if (!query) {
+    console.error("Użycie: askduck <zapytanie>");
+    process.exit(1);
+  }
+  const queryOllamaResponse = await queryOllama("Nie korzystaj z własnej wiedzy. Używaj dostępnych narzędzi. Odpowiedz na poniższe zapytanie:\n" + query);
+  console.log(queryOllamaResponse);
+
+  // let cheatData;
+
+  // try {
+  //   console.log(`Fetching URL: ${url} for query: "${text}`);
+  //   const response = await fetch(url, {
+  //     method: "GET",
+  //     headers: { "Content-Type": "text/markdown", "User-Agent": "curl" },
+  //   });
+
+  //   if (!response.ok) {
+  //     throw new Error(`Status ${response.status}`);
+  //   }
+
+  //   cheatData = await response.json();
+  //   // console.log(`Fetching cheat sheet for: ${text}\n`);
+  //   // console.log(cheatData);
+  // } catch (error) {
+  //   console.error("Error: Failed to fetch cheat sheet —", error.message);
+  //   return;
+  // }
+
+  // try {
+  //   const ollamaResponse = await fetch(ollamaUrl, {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({
+  //       model: ollamaModel,
+  //       prompt:
+  //         "Odpowiedz na poniższe zapytanie:\n" +
+  //         text + "\n" +
+  //         "Załączam ci wynik z api duck duck go, jeśli zawiera odpowiedź na zapytanie to uwzględnij ją w odpowiedzi. Jeśli nie, odpowiedz na podstawie swojej wiedzy ale zaznacz to że to robisz samodzielnie.\n" +
+  //         cheatData,
+  //       stream: false,
+  //     }),
+  //   });
+
+  //   if (!ollamaResponse.ok) {
+  //     throw new Error(`Status ${ollamaResponse.status}`);
+  //   }
+
+  //   const result = await ollamaResponse.json();
+  //   console.log(marked(result.response));
+  // } catch (error) {
+  //   console.error(
+  //     "Error: Failed to fetch from Ollama local API —",
+  //     error.message,
+  //   );
+  // }
+}
+
+main();

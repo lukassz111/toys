@@ -1,0 +1,139 @@
+#!/usr/bin/env node
+
+/**
+ * Katalog cache to katalog względem tego skryptu "../cache/wgetmd/"
+ * Katalog może nie istnieć i trzeba go utworzyć przed zapisem wyników
+ * 
+ * Jest to skrypt, który:
+ * 1. Skrypt który otwiera dany url w przeglądarce "puppeteer"
+ * 2. Czeka aż strona się w pełni załaduje
+ * 3. Czeka jeszcze 3 sekundy
+ * 4. Przewija stronę do końca
+ * 5. Czeka jeszcze 1 sekundę
+ * 6. Wyciąga DOM strony, upraszcza go i zapisuje jako markdown
+ * 
+ * Jeśli w cache jest już zapisany wynik dla danego URL, odczytuje go
+ * zamiast ponownie generować markdown. Nazwa pliku cache to <url_hash>.md
+ */
+
+import puppeteer from 'puppeteer';
+import TurndownService from 'turndown';
+import fs from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CACHE_DIR = path.resolve(__dirname, '../cache/wgetmd/');
+
+const url = process.argv[2];
+
+if (!url) {
+  console.error('Użycie: node scrape.js <url>');
+  process.exit(1);
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function hashUrl(inputUrl) {
+  return crypto.createHash('sha256').update(inputUrl).digest('hex');
+}
+
+async function ensureCacheDir() {
+  await fs.mkdir(CACHE_DIR, { recursive: true });
+}
+
+async function readFromCache(cacheFile) {
+  try {
+    return await fs.readFile(cacheFile, 'utf-8');
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function autoScroll(page) {
+  await page.evaluate(async () => {
+    await new Promise((resolve) => {
+      let totalHeight = 0;
+      const distance = 300;
+      const timer = setInterval(() => {
+        const scrollHeight = document.body.scrollHeight;
+        window.scrollBy(0, distance);
+        totalHeight += distance;
+
+        if (totalHeight >= scrollHeight) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 100);
+    });
+  });
+}
+
+function simplifyHtml(html) {
+  // Usuwa elementy, które zaśmiecają treść (skrypty, style, nav itp.)
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, '');
+}
+
+async function generateMarkdown(targetUrl) {
+  const browser = await puppeteer.launch({ headless: 'new' });
+  const page = await browser.newPage();
+
+  console.log(`Otwieram: ${targetUrl}`);
+
+  // 1 i 2: otwórz stronę i czekaj aż w pełni się załaduje
+  await page.goto(targetUrl, { waitUntil: 'networkidle0' });
+
+  // 3: czekaj dodatkowe 3 sekundy
+  await sleep(3000);
+
+  // 4: przewiń stronę do końca
+  await autoScroll(page);
+
+  // 5: czekaj jeszcze 1 sekundę
+  await sleep(1000);
+
+  // 6: wyciągnij DOM, uprość i zapisz jako markdown
+  const html = await page.content();
+  const simplifiedHtml = simplifyHtml(html);
+
+  const turndownService = new TurndownService();
+  const markdown = turndownService.turndown(simplifiedHtml);
+
+  await browser.close();
+
+  return markdown;
+}
+
+async function main() {
+  await ensureCacheDir();
+
+  const urlHash = hashUrl(url);
+  const cacheFile = path.join(CACHE_DIR, `${urlHash}.md`);
+
+  const cached = await readFromCache(cacheFile);
+
+  if (cached !== null) {
+    console.log(`Znaleziono wynik w cache: ${cacheFile}`);
+    console.log(cached);
+    return;
+  }
+
+  const markdown = await generateMarkdown(url);
+
+  await fs.writeFile(cacheFile, markdown, 'utf-8');
+
+  console.log(`Zapisano wynik do cache: ${cacheFile}`);
+  console.log(markdown);
+}
+
+main();

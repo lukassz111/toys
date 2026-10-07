@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Ignore filemode
+git config core.fileMode false

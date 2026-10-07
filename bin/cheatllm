@@ -1,0 +1,72 @@
+#!/usr/bin/env node
+
+
+const text_cheat = process.argv.slice(2,3).join(" ");
+const text_llm = process.argv.slice(3).join(" ");
+
+if (!text_cheat) {
+  console.error("Użycie: cheat <zapytanie>");
+  process.exit(1);
+}
+
+const baseUrl = "https://cht.sh/";
+const url = `${baseUrl}${encodeURIComponent(text_cheat)}`;
+const ollamaUrl = "http://localhost:11434/api/generate";
+const ollamaModel = "gemma4:e2b"; // zmień na model, który masz zainstalowany
+
+async function main() {
+  const { marked } = await import("marked");
+  const { markedTerminal } = await import("marked-terminal");
+  marked.use(markedTerminal());
+
+  let cheatData;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "text/markdown", "User-Agent": "curl" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Status ${response.status}`);
+    }
+
+    cheatData = await response.text();
+    // console.log(`Fetching cheat sheet for: ${text}\n`);
+    // console.log(cheatData);
+  } catch (error) {
+    console.error("Error: Failed to fetch cheat sheet —", error.message);
+    return;
+  }
+
+  try {
+    const ollamaResponse = await fetch(ollamaUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: ollamaModel,
+        system: "Jesteś ekspertem w dziedzinie poleceń terminala i innych terminów związanych z komputerami. Zawsze dostajesz pojęcie do wyjaśnienia w sposób jasny i zwięzły. Dostajesz również treść cheat sheeta. Odpowiadaj w języku polskim. Cheat sheet jest w języku angielskim.",
+        temperature: 0.7,
+        prompt:
+          "Poniżej znajduje się treść cheat sheeta:\n" +
+          cheatData + "\n"+
+          "Proszę wyjaśnij mi to pojęcie: '" + text_llm + "'. W odpowiedzi nie rozpisuj się. Chcę tylko merytoryczne wyjaśnienie, bez zbędnych wstępów. Podaj przykłady zastosowania w praktyce.",
+        stream: false,
+      }),
+    });
+
+    if (!ollamaResponse.ok) {
+      throw new Error(`Status ${ollamaResponse.status}`);
+    }
+
+    const result = await ollamaResponse.json();
+    console.log(marked(result.response));
+  } catch (error) {
+    console.error(
+      "Error: Failed to fetch from Ollama local API —",
+      error.message,
+    );
+  }
+}
+
+main();

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ps -aux | fzf -q "$@" | awk '{print $2}' | xargs -I{} bash -c "echo 'Killing process {}' ; kill -9 {}";

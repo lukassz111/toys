@@ -1,0 +1,22 @@
+{
+  "name": "toys",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lukassz111/toys.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lukassz111/toys/issues"
+  },
+  "homepage": "https://github.com/lukassz111/toys#readme",
+  "dependencies": {
+    "marked": "^15.0.12",
+    "marked-terminal": "^7.3.0",
+    "puppeteer": "^25.12.0",
+    "turndown": "^7.2.4"
+  }
+}

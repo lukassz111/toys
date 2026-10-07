@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+
+const text = process.argv.slice(2).join(" ");
+
+if (!text) {
+  console.error("Użycie: ask <zapytanie>");
+  process.exit(1);
+}
+
+const ollamaUrl = "http://localhost:11434/api/generate";
+const ollamaModel = "gemma4:e2b"; // zmień na model, który masz zainstalowany
+
+async function main() {
+  const { marked } = await import("marked");
+  const { markedTerminal } = await import("marked-terminal");
+  marked.use(markedTerminal());
+
+  try {
+    const ollamaResponse = await fetch(ollamaUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: ollamaModel,
+        prompt: "W odpowiedzi nie rozpisuj się. Jeśli można podaj przykłady. Jeśli nie masz wystarczającej wiedzy, powiedz szczerze. Odpowiedz na poniższe pytanie:\n" + text,
+        stream: false,
+      }),
+    });
+
+    if (!ollamaResponse.ok) {
+      throw new Error(`Status ${ollamaResponse.status}`);
+    }
+
+    const result = await ollamaResponse.json();
+    console.log(marked(result.response));
+  } catch (error) {
+    console.error(
+      "Error: Failed to fetch from Ollama local API —",
+      error.message,
+    );
+  }
+}
+
+main();
