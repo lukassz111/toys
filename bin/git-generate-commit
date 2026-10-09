@@ -45,7 +45,8 @@ ${formattedDiffs}
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'qwen3:8b',
+        // model: 'qwen3:8b',
+        model: 'qwen3:4b',
         stream: false,
         prompt: prompt  
       })
