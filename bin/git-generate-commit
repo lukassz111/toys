@@ -35,7 +35,7 @@ const generateCommitMessage = async () => {
       return `File: ${stagedFiles[i]}
 ${diff}`;
     }).join('\n\n');
-    const prompt = `Generate a commit message for these changes:
+    const prompt = `Generate a commit message, response only commit message without any additional text for these changes:
 ${formattedDiffs}
 `;
     // Send to Ollama API
