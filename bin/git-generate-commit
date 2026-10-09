@@ -1,0 +1,67 @@
+#!/usr/bin/env node
+
+/**
+ * 
+ * @param prompt 
+ * @returns {Promise<{
+ *    message: {
+ *      role: assistant
+ *      content: string,
+ *      tool_calls: Array<{
+ *        id: string,
+ *        name: string,
+ *        arguments: Record<string, any>,
+ *      }>
+ *    }
+ * }
+ * }>}
+ */
+async function queryOllama(prompt, tools = true) {
+  const ollamaUrl = "http://localhost:11434/api/chat";
+  const ollamaModel = "qwen3:4b"; // zmień na model, który masz zainstalowany
+  const response = await fetch(ollamaUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: ollamaModel,
+      messages: [
+        { "role": "user", "content": prompt }
+      ],
+      stream: false,
+      temperature: 0.7,
+      // Tools 
+      tools: tools ? [
+        {
+          type: "function",
+          function: {
+            "name": "fetch_duck_duck_go",
+            "description": "Fetch data from DuckDuckGo for a given query by api. Returns the result in JSON format.",
+            "parameters": {
+              "type": "object",
+              "required": ["query"],
+              "properties": {
+                "query": {"type": "string", "description": "The search query for DuckDuckGo"}
+              }
+            }
+          }
+        }
+      ] : []
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Status ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+// const url = `https://duckduckgo.com/${encodeURIComponent(text)}&format=json&no_html=1`;
+
+async function main() {
+ 
+    
+
+}
+
+main();
