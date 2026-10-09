@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if ! command -v git-generate-commit >/dev/null 2>&1; then
+	printf 'git-generate-commit was not found in PATH\n' >&2
+	exit 1
+fi
+
+message=$(git-generate-commit)
+
+if [[ -z "${message//[$'\t\n\r ']/}" ]]; then
+	printf 'No commit message was generated\n' >&2
+	exit 1
+fi
+
+printf 'Generated commit message:\n\n%s\n\n' "$message"
+read -r -p 'Create this commit? [y/N] ' confirmation
+
+case "$confirmation" in
+	y|Y|yes|YES|Yes)
+		git commit -m "$message"
+		;;
+	*)
+		printf 'Commit cancelled\n'
+		;;
+esac
