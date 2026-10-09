@@ -38,7 +38,6 @@ ${diff}`;
     const prompt = `Generate a commit message for these changes:
 ${formattedDiffs}
 `;
-console.log(prompt);
     // Send to Ollama API
     const response = await fetch('http://localhost:11434/api/generate', {
       method: 'POST',
@@ -55,7 +54,7 @@ console.log(prompt);
     const data = await response.json();
     const responseText = data.response;
 
-    console.log(responseText);
+    process.stdout.write(`${responseText.trim()}\n`);
   } catch (error) {
     console.error('Error:', error.message);
     exit(1);
