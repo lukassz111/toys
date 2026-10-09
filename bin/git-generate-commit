@@ -9,13 +9,13 @@ const generateCommitMessage = async () => {
     const stagedFiles = await new Promise((resolve, reject) => {
       exec('git diff --cached --name-only', (err, stdout) => {
         if (err) reject(err);
-        resolve(stdout.trim().split('\n'));
+        resolve(stdout.trim().split('\n').filter(Boolean));
       });
     });
 
     if (stagedFiles.length === 0) {
-      console.log('No changes to commit');
-      exit(0);
+      console.error('No staged changes to commit');
+      exit(1);
     }
 
     // Get diffs for each file
